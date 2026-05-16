@@ -716,15 +716,15 @@ function ReservationSection({ config }: { config: ReturnType<typeof useSiteConfi
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    // Try to save to database (non-blocking - WhatsApp always proceeds)
     try {
-      // Save to database via API
       await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-    } catch { /* still proceed even if API fails */ }
-    // Send confirmation email if email is provided
+    } catch { /* DB failure should NOT block WhatsApp */ }
+    // Try to send confirmation email (non-blocking)
     if (form.email) {
       try {
         await fetch("/api/send-confirmation", {
@@ -740,7 +740,7 @@ function ReservationSection({ config }: { config: ReturnType<typeof useSiteConfi
       } catch { /* email failure should not block the flow */ }
     }
     setSubmitted(true);
-    // Build WhatsApp message with actual form data
+    // ALWAYS redirect to WhatsApp — this is the guaranteed way to not lose any subscriber
     const waText = `📋 *Nouvelle inscription — ${config.ORG_NAME}*\n\n👤 *Nom:* ${form.name}\n💼 *Profession:* ${form.profession}\n📧 *Email:* ${form.email || "—"}\n📱 *WhatsApp:* ${form.phone}\n💬 *Message:* ${form.message || "—"}`;
     const waUrl = `https://wa.me/${config.WHATSAPP_NUMBER}?text=${encodeURIComponent(waText)}`;
     setTimeout(() => { window.location.href = waUrl; }, 1500);
